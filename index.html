@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Mi Chat IA</title>
+</head>
+<body>
+
+  <h1>Chat IA</h1>
+
+  <input id="input" placeholder="Escribe algo..." />
+  <button onclick="enviar()">Enviar</button>
+
+  <p id="respuesta"></p>
+
+  <script>
+    async function enviar() {
+      const mensaje = document.getElementById("input").value;
+
+      const res = await fetch("http://localhost:3000/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ mensaje })
+      });
+
+      const data = await res.json();
+
+      document.getElementById("respuesta").innerText = data.respuesta;
+    }
+  </script>
+
+</body>
+</html>

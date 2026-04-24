@@ -1,39 +1,46 @@
 import express from "express";
-import cors from "cors";
 import OpenAI from "openai";
 import dotenv from "dotenv";
+import cors from "cors";
 
 dotenv.config();
 
 const app = express();
+
+// 🔥 CORS (esto arregla tu error)
 app.use(cors());
+
+// 🔥 Para leer JSON
 app.use(express.json());
 
+// 🔥 OpenAI config
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
+  apiKey: process.env.OPENAI_API_KEY,
 });
 
+// 🔥 Ruta del chat
 app.post("/chat", async (req, res) => {
   try {
     const { mensaje } = req.body;
 
-    const respuesta = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+    const response = await openai.chat.completions.create({
+      model: "gpt-4.1-mini",
       messages: [
-        { role: "system", content: "Eres experto en apuestas deportivas" },
         { role: "user", content: mensaje }
-      ]
+      ],
     });
 
     res.json({
-      respuesta: respuesta.choices[0].message.content
+      respuesta: response.choices[0].message.content
     });
 
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error(error);
+    res.status(500).json({ error: "Error en el servidor" });
   }
 });
 
+// 🔥 Servidor
 app.listen(3000, () => {
   console.log("Servidor corriendo en http://localhost:3000");
 });
