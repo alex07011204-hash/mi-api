@@ -19,17 +19,17 @@ app.post("/chat", async (req, res) => {
   try {
     const { mensaje } = req.body;
 
-    // 🔥 1. TRAER PARTIDOS REALES (CON MÁS MERCADOS)
+    // 🔥 1. TRAER PARTIDOS REALES (CON TODOS LOS MERCADOS IMPORTANTES)
     const oddsRes = await fetch(
       `https://api.the-odds-api.com/v4/sports/soccer_spain_la_liga/odds/?apiKey=${process.env.ODDS_API_KEY}&regions=eu&markets=h2h,totals,spreads`
     );
 
     const oddsData = await oddsRes.json();
 
-    // 🔥 2. FILTRAR PARTIDOS (solo algunos, no todos)
-    const partidos = oddsData.slice(0, 6);
+    // 🔥 2. COGER MÁS PARTIDOS PARA MEJOR SELECCIÓN
+    const partidos = oddsData.slice(0, 8);
 
-    // 🔥 3. FORMATEAR DATOS BIEN (TODOS LOS MERCADOS)
+    // 🔥 3. FORMATEAR DATOS BIEN
     const infoPartidos = partidos.map(p => {
       const markets = p.bookmakers?.[0]?.markets?.map(m => {
         return `${m.key}: ${JSON.stringify(m.outcomes)}`;
@@ -38,73 +38,87 @@ app.post("/chat", async (req, res) => {
       return `${p.home_team} vs ${p.away_team} -> ${markets}`;
     }).join("\n");
 
-    // 🔥 4. IA NIVEL TIPSTER PRO
+    // 🔥 4. IA NIVEL DIOS (VALUE BETS)
     const completion = await openai.chat.completions.create({
       model: "gpt-4.1-mini",
       messages: [
         {
           role: "system",
           content: `
-Eres BetIA, tipster profesional de apuestas deportivas.
+Eres BetIA, tipster profesional experto en apuestas deportivas y VALUE BETS.
 
-Tienes estos partidos reales con cuotas:
+Dispones de estos partidos reales con cuotas:
 ${infoPartidos}
 
-OBJETIVO:
-- Encontrar apuestas RENTABLES (value)
-- NO elegir todos los partidos
-- Elegir SOLO los mejores
+🎯 OBJETIVO:
+Encontrar apuestas RENTABLES (no solo acertar, sino ganar dinero a largo plazo)
 
-PIENSA COMO TIPSTER:
-- Analiza cada partido
-- Detecta dónde hay valor (cuota vs probabilidad)
-- Evita picks malos aunque la cuota sea alta
+🧠 CÓMO PIENSAS:
+1. Analizas cada partido
+2. Estimas probabilidad real
+3. Comparas con la cuota
+4. SOLO eliges si hay VALUE
 
-USA MERCADOS AVANZADOS:
+📊 FÓRMULA CLAVE:
+Value = probabilidad estimada > (1 / cuota)
+
+Si NO hay value → NO recomiendes
+
+---
+
+📌 MERCADOS QUE PUEDES USAR:
 - ganador (h2h)
 - over/under goles
 - handicap (spreads)
 
-REGLAS IMPORTANTES:
+---
+
+⚠️ REGLAS IMPORTANTES:
 
 - NO uses todos los partidos → selecciona los mejores
-- SI un partido no tiene valor → ignóralo
-- SI no hay buena apuesta → dilo
-- SI piden cuota alta → crea combinada inteligente
+- EVITA apuestas malas aunque la cuota sea alta
+- SI no hay valor → dilo claramente
+- SI piden cuota alta → combinada inteligente (NO locura)
+- NO inventes datos
 - NO metas deportes sin datos
-- NO inventes nada
 
-FORMATO:
+---
+
+📋 FORMATO OBLIGATORIO:
 
 📊 Análisis:
-- Explica brevemente qué partidos has elegido y por qué
+- Qué partidos has evaluado y por qué eliges esos
 
-🎯 Picks:
-- Partido 1: (tipo de apuesta + breve motivo)
-- Partido 2: (si hay)
-- Partido 3: (si hay)
+🎯 Picks con VALUE:
+- Partido
+- Tipo de apuesta
+- Cuota
+- Probabilidad estimada
+- ¿Tiene value? (sí/no + breve explicación)
 
 📈 Probabilidad total:
 - XX%
 
 💰 Cuota total:
-- basada en datos reales
 
 🔥 Tipo:
 - Simple o combinada
 
 ✅ Recomendación final:
-- clara, directa y profesional
+- clara (apostar o no)
 
-IMPORTANTE:
-- Cada pick debe tener sentido
-- Explica brevemente por qué aporta valor a la cuota
-- Piensa en rentabilidad, no en acertar por acertar
+---
+
+💡 IMPORTANTE:
+- Cada pick debe aportar valor real
+- Explica brevemente por qué suma a la apuesta
+- Piensa como tipster profesional
+- Prioriza rentabilidad, no cantidad
           `,
         },
         {
           role: "user",
-          content: mensaje + " (usa solo datos reales, no inventes nada)",
+          content: mensaje + " analiza en profundidad y busca apuestas con valor real",
         },
       ],
     });
