@@ -1,57 +1,11 @@
-import express from "express";
-import cors from "cors";
-import dotenv from "dotenv";
-import OpenAI from "openai";
-import fetch from "node-fetch";
-
-dotenv.config();
-
-const app = express();
-app.use(cors());
-app.use(express.json());
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
-// 🔥 RUTA PRINCIPAL
-app.post("/chat", async (req, res) => {
-  try {
-    const { mensaje } = req.body;
-
-    // 🔥 1. TRAER PARTIDOS REALES
-    const oddsRes = await fetch(
-      `https://api.the-odds-api.com/v4/sports/soccer_spain_la_liga/odds/?apiKey=${process.env.ODDS_API_KEY}&regions=eu&markets=h2h,totals,spreads`
-    );
-
-    const oddsData = await oddsRes.json();
-
-    if (!Array.isArray(oddsData)) {
-      return res.json({ respuesta: "Error obteniendo datos de partidos" });
-    }
-
-    // 🔥 2. USAR MÁS PARTIDOS
-    const partidos = oddsData.slice(0, 10);
-
-    // 🔥 3. FORMATEAR DATOS
-    const infoPartidos = partidos.map(p => {
-      if (!p.bookmakers || p.bookmakers.length === 0) return null;
-
-      const markets = p.bookmakers[0].markets.map(m => {
-        return `${m.key}: ${m.outcomes.map(o => `${o.name} (${o.price})`).join(", ")}`;
-      }).join(" | ");
-
-      return `${p.home_team} vs ${p.away_team} -> ${markets}`;
-    }).filter(Boolean).join("\n");
-
-    // 🔥 4. IA FINAL PRO
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4.1-mini",
-      temperature: 0.7,
-      messages: [
-        {
-          role: "system",
-          content: `
+// 🔥 4. IA FINAL PRO
+const completion = await openai.chat.completions.create({
+  model: "gpt-4.1-mini",
+  temperature: 0.7,
+  messages: [
+    {
+      role: "system",
+      content: `
 Eres BetIA, tipster profesional.
 
 Tienes estos partidos reales con cuotas:
@@ -91,6 +45,52 @@ Tu objetivo es construir apuestas para alcanzar la cuota que pide el usuario.
 
 - Prioriza calidad sobre cantidad
 - Menos picks, mejor elegidos
+
+---
+
+🧠 ANÁLISIS PROFUNDO DE MERCADOS (AÑADIDO):
+
+- NO selecciones automáticamente "ganador (1X2)"
+- Analiza TODOS los mercados disponibles antes de elegir
+
+- Para cada partido:
+  → Evalúa qué mercado tiene mejor relación probabilidad/cuota
+  → NO elijas el más obvio
+  → NO elijas el primero disponible
+
+- Compara entre TODOS los mercados:
+  - fútbol
+  - tenis
+  - baloncesto
+  - estadísticas
+  - jugadores
+
+- Elige SIEMPRE el mercado más rentable, no el más fácil
+
+---
+
+🚨 PRIORIDAD:
+
+- NO priorizar ganador
+- SOLO usar ganador si es la mejor opción real
+
+---
+
+🧠 PROCESO OBLIGATORIO:
+
+Para cada pick:
+1. Analizar partido
+2. Revisar TODOS los mercados
+3. Elegir el de mayor valor
+4. Añadirlo a la combinada
+
+---
+
+🎯 CALIDAD DE PICKS:
+
+- Cada pick debe aportar valor real
+- NO picks automáticos
+- NO picks repetitivos
 
 ---
 
@@ -202,27 +202,11 @@ Cuota total:
 💡 OBJETIVO:
 
 Parecer tipster profesional real
-          `,
-        },
-        {
-          role: "user",
-          content: mensaje,
-        },
-      ],
-    });
-
-    const respuesta = completion.choices[0].message.content;
-
-    res.json({ respuesta });
-
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Error en el servidor" });
-  }
-});
-
-// 🔥 SERVIDOR
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Servidor corriendo en puerto ${PORT}`);
+      `,
+    },
+    {
+      role: "user",
+      content: mensaje,
+    },
+  ],
 });
