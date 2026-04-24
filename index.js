@@ -116,6 +116,34 @@ FÚTBOL:
 
 ---
 
+TENIS:
+- Ganador del partido
+- Ganador de set
+- Resultado exacto (2-0, 2-1)
+- Handicap de sets
+- Handicap de juegos
+- Over/Under juegos totales
+- Over/Under juegos por set
+- Tie-break (sí/no)
+- Juegos totales jugador
+- Breaks de servicio
+
+---
+
+BALONCESTO:
+- Ganador del partido
+- Handicap de puntos
+- Over/Under puntos totales
+- Puntos por equipo
+- Resultado por mitades/cuarto
+- Ganador primer cuarto
+- Ganador segunda parte
+- Margen de victoria
+- Estadísticas equipo (rebotes, asistencias)
+- Jugadores (puntos, rebotes, asistencias, triples)
+
+---
+
 🧠 USO DE MERCADOS:
 
 - NO usar siempre ganador
