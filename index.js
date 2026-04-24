@@ -19,66 +19,92 @@ app.post("/chat", async (req, res) => {
   try {
     const { mensaje } = req.body;
 
-    // 🔥 1. TRAER PARTIDOS REALES
+    // 🔥 1. TRAER PARTIDOS REALES (CON MÁS MERCADOS)
     const oddsRes = await fetch(
-      `https://api.the-odds-api.com/v4/sports/soccer_spain_la_liga/odds/?apiKey=${process.env.ODDS_API_KEY}&regions=eu&markets=h2h`
+      `https://api.the-odds-api.com/v4/sports/soccer_spain_la_liga/odds/?apiKey=${process.env.ODDS_API_KEY}&regions=eu&markets=h2h,totals,spreads`
     );
 
     const oddsData = await oddsRes.json();
 
-    // 🔥 2. COGER 3 PARTIDOS
-    const partidos = oddsData.slice(0, 3);
+    // 🔥 2. FILTRAR PARTIDOS (solo algunos, no todos)
+    const partidos = oddsData.slice(0, 6);
 
+    // 🔥 3. FORMATEAR DATOS BIEN (TODOS LOS MERCADOS)
     const infoPartidos = partidos.map(p => {
-      return `${p.home_team} vs ${p.away_team} | Cuotas: ${JSON.stringify(p.bookmakers[0].markets[0].outcomes)}`;
+      const markets = p.bookmakers?.[0]?.markets?.map(m => {
+        return `${m.key}: ${JSON.stringify(m.outcomes)}`;
+      }).join(" | ");
+
+      return `${p.home_team} vs ${p.away_team} -> ${markets}`;
     }).join("\n");
 
-    // 🔥 3. IA CON CONTEXTO REAL
+    // 🔥 4. IA NIVEL TIPSTER PRO
     const completion = await openai.chat.completions.create({
       model: "gpt-4.1-mini",
       messages: [
         {
           role: "system",
           content: `
-Eres BetIA, un experto en apuestas deportivas profesional.
+Eres BetIA, tipster profesional de apuestas deportivas.
 
-Dispones de estos partidos reales con cuotas:
+Tienes estos partidos reales con cuotas:
 ${infoPartidos}
 
-Tu estilo:
-- Claro, directo y como tipster PRO
-- Nada de respuestas genéricas
-- Solo apuestas útiles
+OBJETIVO:
+- Encontrar apuestas RENTABLES (value)
+- NO elegir todos los partidos
+- Elegir SOLO los mejores
 
-Tu trabajo:
-- Analizar partidos reales
-- Detectar oportunidades
-- Crear apuestas simples o combinadas
+PIENSA COMO TIPSTER:
+- Analiza cada partido
+- Detecta dónde hay valor (cuota vs probabilidad)
+- Evita picks malos aunque la cuota sea alta
 
-Formato SIEMPRE:
+USA MERCADOS AVANZADOS:
+- ganador (h2h)
+- over/under goles
+- handicap (spreads)
+
+REGLAS IMPORTANTES:
+
+- NO uses todos los partidos → selecciona los mejores
+- SI un partido no tiene valor → ignóralo
+- SI no hay buena apuesta → dilo
+- SI piden cuota alta → crea combinada inteligente
+- NO metas deportes sin datos
+- NO inventes nada
+
+FORMATO:
 
 📊 Análisis:
-(explicación clara basada en los partidos)
+- Explica brevemente qué partidos has elegido y por qué
 
-📈 Probabilidad:
-(XX%)
+🎯 Picks:
+- Partido 1: (tipo de apuesta + breve motivo)
+- Partido 2: (si hay)
+- Partido 3: (si hay)
+
+📈 Probabilidad total:
+- XX%
 
 💰 Cuota total:
-(realista basada en las cuotas dadas)
+- basada en datos reales
 
-✅ Recomendación:
-(Apostar o no + motivo claro)
+🔥 Tipo:
+- Simple o combinada
 
-Reglas:
-- NO inventes partidos
-- USA los datos proporcionados
-- Si no hay buena apuesta → dilo
-- Prioriza combinadas si el usuario pide cuota alta
+✅ Recomendación final:
+- clara, directa y profesional
+
+IMPORTANTE:
+- Cada pick debe tener sentido
+- Explica brevemente por qué aporta valor a la cuota
+- Piensa en rentabilidad, no en acertar por acertar
           `,
         },
         {
           role: "user",
-          content: mensaje,
+          content: mensaje + " (usa solo datos reales, no inventes nada)",
         },
       ],
     });
