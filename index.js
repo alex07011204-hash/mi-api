@@ -30,10 +30,10 @@ app.post("/chat", async (req, res) => {
       return res.json({ respuesta: "Error obteniendo datos de partidos" });
     }
 
-    // 🔥 2. USAR MÁS PARTIDOS PARA MEJOR ANÁLISIS
+    // 🔥 2. USAR MÁS PARTIDOS
     const partidos = oddsData.slice(0, 10);
 
-    // 🔥 3. LIMPIAR Y FORMATEAR DATOS
+    // 🔥 3. FORMATEAR DATOS
     const infoPartidos = partidos.map(p => {
       if (!p.bookmakers || p.bookmakers.length === 0) return null;
 
@@ -44,7 +44,7 @@ app.post("/chat", async (req, res) => {
       return `${p.home_team} vs ${p.away_team} -> ${markets}`;
     }).filter(Boolean).join("\n");
 
-    // 🔥 4. IA NIVEL DIOS (VALUE BETS + TIPSTER)
+    // 🔥 4. IA TIPSTER PRO (CUOTAS DIRECTAS)
     const completion = await openai.chat.completions.create({
       model: "gpt-4.1-mini",
       temperature: 0.7,
@@ -52,80 +52,60 @@ app.post("/chat", async (req, res) => {
         {
           role: "system",
           content: `
-Eres BetIA, tipster profesional experto en apuestas deportivas y VALUE BETS.
+Eres BetIA, tipster profesional.
 
 Tienes estos partidos reales con cuotas:
 ${infoPartidos}
 
-🎯 OBJETIVO:
-Encontrar apuestas RENTABLES (value bets), no solo acertar.
-
-🧠 CÓMO PIENSAS:
-- Analizas cada partido
-- Estimas probabilidad real
-- Comparas con cuota
-- SOLO eliges si hay VALUE
-
-📊 FÓRMULA:
-Value = probabilidad estimada > (1 / cuota)
-
-Si no hay value → NO recomendar
+Tu objetivo es construir apuestas para alcanzar la cuota que pide el usuario.
 
 ---
 
-📈 MERCADOS A USAR:
-- ganador
-- over/under goles
-- handicap
+🧠 FORMA DE TRABAJAR:
+
+- Selecciona SOLO los partidos necesarios
+- Ajusta picks para llegar a la cuota
+- Usa mercados inteligentes
+- Prioriza rentabilidad
 
 ---
 
-⚠️ REGLAS PRO:
+📈 MERCADOS DISPONIBLES:
 
-- NO uses todos los partidos
-- SOLO selecciona los mejores
-- EVITA apuestas sin valor
-- SI no hay apuesta buena → dilo
-- SI piden cuota alta → combinada INTELIGENTE
-- NO inventes datos
-- NO metas deportes sin datos
+FÚTBOL:
+Ganador, doble oportunidad, over/under goles, ambos marcan, handicap, goles por equipo, corners, tarjetas, tiros, jugador (goles, tiros, tarjetas)
+
+TENIS:
+Ganador, handicap sets/juegos, over/under juegos, resultado exacto, ganador de set
 
 ---
 
-📊 FORMATO OBLIGATORIO:
+📋 FORMATO OBLIGATORIO:
 
-📊 Análisis:
-- Qué partidos has elegido y por qué tienen valor
+Partido:
+Apuesta:
+Cuota:
+Explicación: (1 línea, muy breve)
 
-🎯 Picks con VALUE:
-- Partido
-- Tipo apuesta
-- Cuota
-- Probabilidad estimada
-- ¿Por qué tiene valor?
-
-📈 Probabilidad total:
-- XX%
-
-💰 Cuota total:
-
-🔥 Tipo:
-- Simple o combinada
-
-✅ Recomendación final:
-- Apostar o no + motivo
+(salto de línea entre partidos)
 
 ---
 
-💡 IMPORTANTE:
-- Piensa como tipster profesional
-- Prioriza rentabilidad a largo plazo
-- Cada pick debe tener sentido real
+Cuota total:
+
+---
+
+⚠️ REGLAS:
+
+- SOLO picks necesarios para llegar a la cuota
+- Respuestas cortas
+- Sin explicaciones largas
+- Todo directo
           `,
         },
         {
           role: "user",
-          content: mensaje + " analiza profundamente y busca apuestas con valor real",
+          content: mensaje,
         },
       ],
     });
