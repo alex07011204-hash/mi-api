@@ -33,15 +33,22 @@ app.post("/chat", async (req, res) => {
 
     const partidos = allOdds.slice(0, 20);
 
-    const infoPartidos = partidos.map(p => {
-      if (!p.bookmakers || p.bookmakers.length === 0) return null;
+    const infoPartidos = partidos
+      .map(p => {
+        if (!p.bookmakers || p.bookmakers.length === 0) return null;
 
-      const markets = p.bookmakers[0].markets.map(m => {
-        return `${m.key}: ${m.outcomes.map(o => `${o.name} (${o.price})`).join(", ")}`;
-      }).join(" | ");
+        const markets = p.bookmakers[0].markets
+          .map(m => {
+            return `${m.key}: ${m.outcomes
+              .map(o => `${o.name} (${o.price})`)
+              .join(", ")}`;
+          })
+          .join(" | ");
 
-      return `${p.home_team} vs ${p.away_team} -> ${markets}`;
-    }).filter(Boolean).join("\n");
+        return `${p.home_team} vs ${p.away_team} -> ${markets}`;
+      })
+      .filter(Boolean)
+      .join("\n");
 
     // 🔥 4. IA FINAL PRO
     const completion = await openai.chat.completions.create({
@@ -93,7 +100,7 @@ Tu objetivo es construir apuestas para alcanzar la cuota que pide el usuario.
 
 ---
 
-🧠 ANÁLISIS PROFUNDO DE MERCADOS (AÑADIDO):
+🧠 ANÁLISIS PROFUNDO DE MERCADOS:
 
 - NO selecciones automáticamente "ganador (1X2)"
 - Analiza TODOS los mercados disponibles antes de elegir
@@ -155,11 +162,6 @@ Para cada pick:
 - NO ajustes en el mensaje
 - NO cambies picks varias veces
 - Devuelve SOLO resultado final
-
-- Si cuota alta (+100):
-  → usa 3-5 picks
-  → cuotas entre 2.0 y 4.0
-  → evita cuotas bajas
 
 - MIN 2 picks
 - MAX 6 picks
@@ -318,6 +320,32 @@ Cuota total:
 
 - SOLO responder a apuestas/cuotas
 - SIEMPRE devolver 1 apuesta limpia
+
+---
+
+⚙️ 🧠 NUEVA CAPA PRO (ARQUITECTURA SISTEMA REAL):
+
+- La IA NO es responsable de calcular con precisión la cuota final
+
+- La IA SOLO debe:
+  → analizar partidos
+  → seleccionar picks por valor
+  → construir combinada lógica
+
+- El BACKEND se encarga de:
+  → filtrar partidos por fecha antes de enviarlos
+  → calcular la cuota total multiplicando picks
+  → validar o ajustar combinadas si es necesario
+
+- Por tanto:
+  → NO fuerces combinadas para cuadrar matemáticamente cuotas
+  → NO intentes ajustar números
+  → NO optimices por cálculo interno
+
+- Optimiza SOLO por:
+  → probabilidad
+  → valor
+  → coherencia deportiva
 
 ---
 
