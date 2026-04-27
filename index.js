@@ -2,7 +2,7 @@ app.post("/chat", async (req, res) => {
   try {
     const { mensaje } = req.body;
 
-    // 🔥 NUEVO: TRAER TODOS LOS DEPORTES
+    // 🔥 TRAER TODOS LOS DEPORTES
     const sportsRes = await fetch(
       `https://api.the-odds-api.com/v4/sports/?apiKey=${process.env.ODDS_API_KEY}`
     );
@@ -18,18 +18,32 @@ app.post("/chat", async (req, res) => {
       .map(s => s.key);
 
     let allOdds = [];
+    const ahora = new Date();
 
     for (const sport of sports) {
       const resApi = await fetch(
-        `https://api.the-odds-api.com/v4/sports/${sport}/odds/?apiKey=${process.env.ODDS_API_KEY}&regions=eu&markets=h2h,totals,spreads`
+        `https://api.the-odds-api.com/v4/sports/${sport}/odds/?apiKey=${process.env.ODDS_API_KEY}&regions=eu&markets=h2h,totals,spreads&oddsFormat=decimal`
       );
 
       const data = await resApi.json();
 
-      if (Array.isArray(data)) {
-        allOdds = allOdds.concat(data);
+      if (Array.isArray(data) && data.length > 0) {
+        // 🔥 FILTRAR SOLO PARTIDOS FUTUROS (CLAVE)
+        const filtrados = data.filter(p => {
+          return new Date(p.commence_time) > ahora;
+        });
+
+        allOdds = allOdds.concat(filtrados);
       }
     }
+
+    // 🔥 SI NO HAY NADA, EVITAR ERROR
+    if (allOdds.length === 0) {
+      return res.json({ respuesta: "No hay partidos disponibles ahora mismo." });
+    }
+
+    // 🔥 ORDENAR POR FECHA (IMPORTANTE)
+    allOdds.sort((a, b) => new Date(a.commence_time) - new Date(b.commence_time));
 
     const partidos = allOdds.slice(0, 20);
 
@@ -50,7 +64,7 @@ app.post("/chat", async (req, res) => {
       .filter(Boolean)
       .join("\n");
 
-    // 🔥 4. IA FINAL PRO
+    // 🔥 4. IA FINAL PRO (NO TOCADO)
     const completion = await openai.chat.completions.create({
       model: "gpt-4.1-mini",
       temperature: 0.7,
