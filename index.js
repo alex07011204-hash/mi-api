@@ -1,11 +1,56 @@
-// 🔥 4. IA FINAL PRO
-const completion = await openai.chat.completions.create({
-  model: "gpt-4.1-mini",
-  temperature: 0.7,
-  messages: [
-    {
-      role: "system",
-      content: `
+app.post("/chat", async (req, res) => {
+  try {
+    const { mensaje } = req.body;
+
+    // 🔥 NUEVO: TRAER TODOS LOS DEPORTES
+    const sportsRes = await fetch(
+      `https://api.the-odds-api.com/v4/sports/?apiKey=${process.env.ODDS_API_KEY}`
+    );
+
+    const sportsData = await sportsRes.json();
+
+    const sports = sportsData
+      .filter(s =>
+        s.key.includes("soccer") ||
+        s.key.includes("basketball") ||
+        s.key.includes("tennis")
+      )
+      .map(s => s.key);
+
+    let allOdds = [];
+
+    for (const sport of sports) {
+      const resApi = await fetch(
+        `https://api.the-odds-api.com/v4/sports/${sport}/odds/?apiKey=${process.env.ODDS_API_KEY}&regions=eu&markets=h2h,totals,spreads`
+      );
+
+      const data = await resApi.json();
+
+      if (Array.isArray(data)) {
+        allOdds = allOdds.concat(data);
+      }
+    }
+
+    const partidos = allOdds.slice(0, 20);
+
+    const infoPartidos = partidos.map(p => {
+      if (!p.bookmakers || p.bookmakers.length === 0) return null;
+
+      const markets = p.bookmakers[0].markets.map(m => {
+        return `${m.key}: ${m.outcomes.map(o => `${o.name} (${o.price})`).join(", ")}`;
+      }).join(" | ");
+
+      return `${p.home_team} vs ${p.away_team} -> ${markets}`;
+    }).filter(Boolean).join("\n");
+
+    // 🔥 4. IA FINAL PRO
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4.1-mini",
+      temperature: 0.7,
+      messages: [
+        {
+          role: "system",
+          content: `
 Eres BetIA, tipster profesional.
 
 Tienes estos partidos reales con cuotas:
@@ -213,6 +258,35 @@ Antes de responder:
 
 ---
 
+🧠 EDGE PROFESIONAL (AÑADIDO PRO):
+
+- Detecta value bets
+- Evita favoritos inflados
+- Busca mercados secundarios con edge
+
+---
+
+🧠 CONTEXTO REAL (AÑADIDO PRO):
+
+Analiza forma, lesiones, motivación y ritmo antes de elegir
+
+---
+
+🧠 GESTIÓN DE RIESGO:
+
+- Evitar correlaciones
+- Diversificar mercados
+- No forzar picks
+
+---
+
+🧠 REALISMO:
+
+- Apuesta lógica y apostable
+- Nada irreal
+
+---
+
 📋 FORMATO OBLIGATORIO:
 
 Partido:
@@ -250,11 +324,21 @@ Cuota total:
 💡 OBJETIVO:
 
 Parecer tipster profesional real
-      `,
-    },
-    {
-      role: "user",
-      content: mensaje,
-    },
-  ],
+          `,
+        },
+        {
+          role: "user",
+          content: mensaje,
+        },
+      ],
+    });
+
+    const respuesta = completion.choices[0].message.content;
+
+    res.json({ respuesta });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error en el servidor" });
+  }
 });
